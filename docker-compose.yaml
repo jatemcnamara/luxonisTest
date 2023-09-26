@@ -1,0 +1,58 @@
+version: "3.8"
+services:
+  pgsql:
+    image: postgres
+    stdin_open: true
+    restart: always
+    user: postgres
+    environment: 
+      POSTGRES_PASSWORD: 12031974
+      POSTGRES_USER: postgres
+      PGUSER: postgres
+      POSTGRES_DB: flats
+    volumes:
+      - "./postgres/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d"
+      # - "./data/postgres_data:/var/lib/postgresql/data"
+      - "./postgres:/data/postgres"
+    ports:
+      - 5432:5432
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+  server:    
+    image: server-app
+    build: 
+      context: ./server
+      dockerfile: E:\projects\luxonisTest\server\Dockerfile
+    depends_on:
+      pgsql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:12031974@pgsql:5432/flats
+      PSQL_HOST: pgsql
+      DB_HOST: pgsql
+      POSTGRES_USER: postgres
+      PGUSER: postgres
+      POSTGRES_DB: flats
+      POSTGRES_PASSWORD: 12031974
+    container_name: server      
+    ports:
+      - 5000:5000
+    links:
+      - pgsql  
+  client:
+    image: client_app
+    build: 
+      context: ./luxonis
+      dockerfile: E:\projects\luxonisTest\luxonis\Dockerfile
+    depends_on: 
+      - server
+    container_name: client
+    ports:
+      - 8080:3000
+    stdin_open: true
+    tty: true
